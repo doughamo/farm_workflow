@@ -1,0 +1,104 @@
+# Farm Data Workflow — Paddock Configuration
+# Edit this file for each run. Do not hardcode values in scripts.
+# All paths are relative to the project root unless absolute.
+
+# -----------------------------------------
+# RUN METADATA
+# -----------------------------------------
+run:
+  paddock_id: "NRTWR9P2"          # Must match folder/file naming convention
+  paddock_name: "0L6"             # Human-readable name
+  farm_name: "Maradah & Lakeview"
+  season: "2025"
+  crop: "wheat"                   # wheat | barley | canola | pulse
+  operator: "Barry"
+  run_date: null                  # Set automatically at runtime (ISO 8601)
+  run_notes: ""                   # Optional free text for this run
+
+# -----------------------------------------
+# INPUT FILES
+# -----------------------------------------
+inputs:
+  cn1_zip: "data/raw/yield/2025-12-19-14-00-12.zip"
+  protein_csv: "data/raw/protein/<filename>.csv"
+  boundary_shp: "data/raw/boundaries/<paddock>.shp"
+
+# -----------------------------------------
+# PROTEIN CSV COLUMN MAPPING
+# CropScan field names vary - set these to match your actual CSV headers
+# -----------------------------------------
+protein_columns:
+  latitude: "Latitude"
+  longitude: "Longitude"
+  protein: "Protein"
+  moisture: null
+  timestamp: null
+
+# -----------------------------------------
+# COORDINATE REFERENCE SYSTEM
+# -----------------------------------------
+crs:
+  input_gps: "EPSG:4326"       # WGS84 - GPS input data
+  project: "EPSG:28350"        # GDA94 / MGA Zone 50 - WA wheatbelt default
+  # Zone 50 covers 114-120E. Change to 28351 (Zone 51) if paddock > 120E.
+
+# -----------------------------------------
+# YIELD CLEANING PARAMETERS
+# -----------------------------------------
+yield_cleaning:
+  machine_id_field: null         # CN1 SDK field name - set after SDK confirmed
+  machine_offset_warn_pct: 15    # Flag offset > this % of grand mean
+  speed_min_kmh: 3.0
+  speed_max_kmh: 12.0
+  yield_lower_pct: 2
+  yield_upper_pct: 98
+
+# -----------------------------------------
+# PROTEIN CLEANING PARAMETERS
+# -----------------------------------------
+protein_cleaning:
+  protein_min_pct: 5.0
+  protein_max_pct: 25.0
+  zscore_flag_threshold: 3.0
+
+# -----------------------------------------
+# RASTER / INTERPOLATION PARAMETERS
+# -----------------------------------------
+raster:
+  resolution_m: 10
+  interpolation_method: "vesper"  # vesper | pykrige
+  kriging_type: "local"
+
+# -----------------------------------------
+# ZONE DELINEATION PARAMETERS
+# -----------------------------------------
+zones:
+  n_zones: 3
+  min_zone_area_ha: 2.0
+  random_seed: 42
+
+# -----------------------------------------
+# PRESCRIPTION PARAMETERS
+# -----------------------------------------
+prescription:
+  input_type: "nitrogen"
+  rate_unit: "kg/ha"
+  rate_field_name: "RATE"
+  default_rate_field: "DEF_RATE"
+  min_rate_field: "MIN_RATE"
+  max_rate_field: "MAX_RATE"
+  default_rate: null
+  min_rate: 0
+  max_rate: 200
+
+# -----------------------------------------
+# OUTPUT PATHS
+# -----------------------------------------
+outputs:
+  processed_yield: "data/processed/yield/"
+  processed_protein: "data/processed/protein/"
+  rasters: "data/processed/rasters/"
+  zones: "data/outputs/zones/"
+  handoff: "data/outputs/handoff/"
+  prescriptions: "data/outputs/prescriptions/"
+  logs: "logs/"

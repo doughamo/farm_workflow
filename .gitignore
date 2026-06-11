@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Conda / virtual environments
+.env
+.venv
+env/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Data — raw inputs and outputs are NOT committed to git.
+# The folder structure is committed (via .gitkeep), not the data.
+data/raw/yield/*.zip
+data/raw/yield/*.shp
+data/raw/yield/*.dbf
+data/raw/yield/*.shx
+data/raw/yield/*.prj
+data/raw/yield/*.cpg
+data/raw/protein/*.csv
+data/raw/boundaries/*.shp
+data/raw/boundaries/*.dbf
+data/raw/boundaries/*.shx
+data/raw/boundaries/*.prj
+data/raw/boundaries/*.cpg
+data/raw/soil/
+data/processed/
+data/outputs/
+
+# Logs
+logs/*.log
+logs/run_log.csv
+
+# SDK — licensed, not committed
+sdk/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter (if used later)
+.ipynb_checkpoints/
+*.ipynb
