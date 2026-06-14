@@ -32,9 +32,9 @@ data/raw/soil/
 data/processed/
 data/outputs/
 
-# Logs
-logs/*.log
-logs/run_log.csv
+# Logs — keep the folder, ignore its contents
+logs/*
+!logs/.gitkeep
 
 # SDK — licensed, not committed
 sdk/
