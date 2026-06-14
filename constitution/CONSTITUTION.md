@@ -1,4 +1,4 @@
-# Farm Data Workflow — Project Constitution v0.3
+# Farm Data Workflow — Project Constitution v0.4
 # Status: Baseline — environment confirmed, SDK registration pending
 # Last updated: 2026-06
 
@@ -7,22 +7,37 @@
 ## 1. Purpose
 
 Build a local-first, modular Python pipeline that ingests, cleans,
-analyses, and interprets farm spatial data to produce variable rate
-prescription shapefiles compatible with Case IH AFS displays.
+analyses, and interprets farm spatial data to serve two related
+analytical workflows:
 
-Initial scope: nitrogen VRA using yield and protein data, single
-paddock, single season. Designed so that additional paddocks, seasons,
-and prescription types can be added without restructuring the codebase.
+  (A) Variable rate prescription generation — producing N prescription
+      shapefiles compatible with Case IH AFS displays.
+
+  (B) On-farm experiment (OFE) analysis — processing yield response
+      to fertiliser treatments, estimating localised response via GWR,
+      and calculating gross margins.
+
+v1 scope: workflow A only (nitrogen VRA), single paddock, single season.
+Workflow B is planned scope, to be added in v1.1.
+
+An existing R Shiny application covers workflow B and operates in
+parallel during v1. The Python pipeline will port this capability
+(see Section 16 — Interop Strategy).
+
+Designed so that additional paddocks, seasons, and prescription types
+can be added without restructuring the codebase.
 
 ---
 
 ## 2. Users and Roles
 
-| Role                  | Responsibility                                        |
-|-----------------------|-------------------------------------------------------|
-| Farm operator         | Runs pipeline, reviews QA flags, delivers prescription|
-| Agronomist/consultant | Receives zone map, assigns N rates per zone           |
-| Claude Code           | Script development and architecture assistance        |
+| Role                  | Responsibility                                                      |
+|-----------------------|---------------------------------------------------------------------|
+| Farm operator         | Runs pipeline, reviews QA flags, delivers prescription              |
+| Agronomist/consultant | Receives zone map, assigns N rates per zone                         |
+| Claude Code           | Script development and architecture assistance                      |
+| R Shiny OFE tool      | Parallel system — Path B interop, receives cleaned yield shapefile, |
+|                       | produces GWR and gross margin outputs (temporary, v1 only)          |
 
 The workflow produces spatial products.
 Agronomic decisions remain with the agronomist.
@@ -31,31 +46,35 @@ Agronomic decisions remain with the agronomist.
 
 ## 3. Data Inputs
 
-| Layer              | Format           | Source                    | Status     |
-|--------------------|------------------|---------------------------|------------|
-| Yield              | CN1 ZIP → .shp   | AFS Connect manual export | v1 active  |
-| Protein            | CSV              | CropScan meter            | v1 active  |
-| Paddock boundaries | Shapefile        | Existing on-farm files    | v1 active  |
-| EM38               | TBD              | Third-party survey        | Deferred   |
-| Gamma radiometrics | TBD              | Third-party survey        | Deferred   |
-| Soil tests         | CSV              | Lab / agronomist          | Deferred   |
-| NDVI / imagery     | GeoTIFF          | On-demand                 | Deferred   |
+| Layer              | Format            | Source                     | Status      |
+|--------------------|-------------------|----------------------------|-------------|
+| Yield              | CN1 ZIP → .shp    | AFS Connect manual export  | v1 active   |
+| Protein            | CSV               | CropScan meter             | v1 active   |
+| Paddock boundaries | Shapefile         | Existing on-farm files     | v1 active   |
+| Treatment zones    | Shapefile         | Agronomist / trial design  | v1.1 active |
+| R OFE outputs      | GeoTIFF/Shapefile | R Shiny tool output        | v1 interop  |
+| EM38               | TBD               | Third-party survey         | Deferred    |
+| Gamma radiometrics | TBD               | Third-party survey         | Deferred    |
+| Soil tests         | CSV               | Lab / agronomist           | Deferred    |
+| NDVI / imagery     | GeoTIFF           | On-demand                  | Deferred    |
 
 ---
 
 ## 4. Data Outputs
 
-| Output                    | Format    | Destination                  |
-|---------------------------|-----------|------------------------------|
-| Cleaned yield layer       | Shapefile | data/processed/yield/        |
-| Cleaned protein layer     | Shapefile | data/processed/protein/      |
-| Normalised yield raster   | GeoTIFF   | data/processed/rasters/      |
-| Normalised protein raster | GeoTIFF   | data/processed/rasters/      |
-| Management zone map       | Shapefile | data/outputs/zones/          |
-| Zone summary statistics   | CSV       | data/outputs/handoff/        |
-| Printable zone map        | PDF       | data/outputs/handoff/        |
-| N prescription shapefile  | Shapefile | data/outputs/prescriptions/  |
-| Run log                   | CSV       | logs/                        |
+| Output                      | Format    | Destination                  |
+|-----------------------------|-----------|------------------------------|
+| Cleaned yield layer         | Shapefile | data/processed/yield/        |
+| Cleaned protein layer       | Shapefile | data/processed/protein/      |
+| Normalised yield raster     | GeoTIFF   | data/processed/rasters/      |
+| Normalised protein raster   | GeoTIFF   | data/processed/rasters/      |
+| Management zone map         | Shapefile | data/outputs/zones/          |
+| Zone summary statistics     | CSV       | data/outputs/handoff/        |
+| Printable zone map          | PDF       | data/outputs/handoff/        |
+| N prescription shapefile    | Shapefile | data/outputs/prescriptions/  |
+| OFE yield-treatment summary | CSV       | data/outputs/ofe/            |
+| Interop yield export        | Shapefile | data/interop/r_input/        |
+| Run log                     | CSV       | logs/                        |
 
 ---
 
@@ -125,6 +144,24 @@ Stage 5  zones             K-Means clustering (k=3), spatial filter
 Stage 6  handoff           Zone summary CSV + PDF map for agronomist
          [manual]          Agronomist assigns N rate per zone
 Stage 7  prescription      Join rates → AFS-compatible shapefile
+Stage 8  ofe_prep          [Path B interop] Write cleaned yield shapefile
+                           to data/interop/r_input/. Validate R tool
+                           outputs are present in data/interop/r_output/
+                           before downstream reporting depends on them.
+
+--- v1.1 (OFE analysis — pending port from R) ---
+
+Stage 9   ofe_analysis     Assign yield observations to treatment zones;
+                           per-zone yield summaries
+Stage 10  gwr              Geographically weighted regression;
+                           localised fertiliser response coefficients
+                           (Python: mgwr)
+Stage 11  gross_margin     Gross margin raster per pixel:
+                           (yield × grain price) − (product × cost/t)
+                           − installation cost
+
+Stages 9–11 are stubs only in v1. They replace the R Shiny OFE tool
+when Path B interop is retired.
 
 ---
 
@@ -137,14 +174,19 @@ farm_workflow/
 │   │   ├── yield/        <- CN1 ZIPs and converted point shapefiles
 │   │   ├── protein/      <- CropScan CSV files
 │   │   ├── boundaries/   <- paddock boundary shapefiles
+│   │   ├── treatments/   <- treatment zone shapefiles (v1.1)
 │   │   └── soil/         <- reserved
 │   ├── processed/
 │   │   ├── yield/        <- cleaned point shapefiles
 │   │   ├── protein/      <- cleaned point shapefiles
 │   │   └── rasters/      <- normalised GeoTIFFs
+│   ├── interop/
+│   │   ├── r_input/      <- Python writes here; R tool reads from here
+│   │   └── r_output/     <- R tool writes here; Python reads from here
 │   └── outputs/
 │       ├── zones/        <- management zone shapefiles
 │       ├── handoff/      <- CSVs and PDFs for agronomist
+│       ├── ofe/          <- OFE analysis outputs (v1.1)
 │       └── prescriptions/<- final AFS prescription shapefiles
 ├── scripts/              <- numbered pipeline scripts
 ├── config/               <- paddock_config.yaml
@@ -166,11 +208,16 @@ Core libraries (conda-forge):
   scikit-learn, pykrige, matplotlib, pyyaml
 
 Additional (pip):
-  pyprecag, pythonnet
+  pyprecag, pythonnet, mgwr
 
 External tools:
   VESPER — kriging engine, Windows standalone
   CN1 SDK — .NET Standard 2.0, via pythonnet bridge
+
+Note: pykrige (conda-forge) and VESPER are both listed as kriging
+options. The relationship between them — which is canonical for which
+stage — is an open decision to be resolved and logged before Stage 4
+is built. See Section 15.
 
 IDE: VS Code + Python extension
 Version control: Git + GitHub
@@ -200,20 +247,65 @@ FieldOps API integration, EM38, gamma, NDVI, seeding/lime/fungicide
 prescriptions, multi-year analysis, cloud storage, multi-user access,
 automated agronomist rate assignment.
 
+OFE analysis — v1 only. Planned for v1.1. R Shiny tool used in
+parallel via Path B interop during v1.
+
 ---
 
 ## 15. Decisions Log
 
-| Version | Decision                                                  |
-|---------|-----------------------------------------------------------|
-| v0.1    | pyprecag as default cleaning standard                     |
-| v0.1    | Zone inputs: yield + protein only                         |
-| v0.1    | Zone count: 3 (fixed, v1)                                 |
-| v0.1    | Agronomist handoff: exploratory — CSV + PDF map           |
-| v0.1    | Multi-year: single year for v1; z-score norm deferred     |
-| v0.2    | Multi-harvester: per-machine mean offset correction       |
-| v0.2    | Protein source: CropScan CSV                              |
-| v0.3    | Python env: Conda Miniforge + pip for pyprecag            |
-| v0.3    | Yield format: CN1 binary confirmed, SDK path chosen       |
-| v0.3    | CN1 SDK via pythonnet (.NET bridge)                       |
-| v0.3    | Environment and GitHub confirmed — ready to build         |
+| Version | Decision                                                             |
+|---------|----------------------------------------------------------------------|
+| v0.1    | pyprecag as default cleaning standard                                |
+| v0.1    | Zone inputs: yield + protein only                                    |
+| v0.1    | Zone count: 3 (fixed, v1)                                            |
+| v0.1    | Agronomist handoff: exploratory — CSV + PDF map                      |
+| v0.1    | Multi-year: single year for v1; z-score norm deferred                |
+| v0.2    | Multi-harvester: per-machine mean offset correction                  |
+| v0.2    | Protein source: CropScan CSV                                         |
+| v0.3    | Python env: Conda Miniforge + pip for pyprecag                       |
+| v0.3    | Yield format: CN1 binary confirmed, SDK path chosen                  |
+| v0.3    | CN1 SDK via pythonnet (.NET bridge)                                  |
+| v0.3    | Environment and GitHub confirmed — ready to build                    |
+| v0.4    | Platform scope expanded: two workflows — VRA (A) and OFE (B)        |
+| v0.4    | Interop strategy: Path B (file-based handoff) during porting period  |
+| v0.4    | Runtime interop via rpy2 rejected — dependency management cost       |
+| v0.4    | R-to-Python port targets: gstat → pykrige, GWmodel → mgwr           |
+| v0.4    | mgwr added to pip dependencies for Stage 10 (GWR port)              |
+| v0.4    | Kriging tool decision (pykrige vs VESPER) deferred — open item       |
+
+---
+
+## 16. Interop Strategy (Path B — temporary)
+
+The R Shiny OFE tool operates in parallel with the Python pipeline
+during v1. Integration is file-based only — no runtime dependency
+between the two environments.
+
+Data contract:
+
+  Python → R:  Cleaned yield point shapefile
+               Location:        data/interop/r_input/
+               CRS:             UTM Zone 50 South (EPSG:32750)
+               Required fields: E, N, yield (t/ha), machine_id
+               Filename:        {paddock_id}_{season}_yield_clean.shp
+
+  R → Python:  GWR response raster (GeoTIFF)
+               Gross margin raster (GeoTIFF)
+               Location:        data/interop/r_output/
+               CRS:             UTM Zone 50 South (EPSG:32750)
+               Filename:        {paddock_id}_{season}_gwr_response.tif
+                                {paddock_id}_{season}_gross_margin.tif
+
+Stage 8 (ofe_prep.py) manages this handoff and validates both sides
+before any downstream stage proceeds.
+
+R Shiny tool prerequisite: rgdal was removed from CRAN in October 2023.
+The R tool uses readOGR (rgdal) and cannot run on a modern R
+installation without remediation. Required fix before Path B can
+function: replace readOGR with sf::st_read and update all sp/rgdal
+spatial object handling to sf equivalents throughout the R codebase.
+This is a prerequisite task, not optional.
+
+Path B is temporary scaffolding. It is retired when Stages 9–11 pass
+output validation against R tool results on the same input data.
