@@ -1,5 +1,6 @@
 # Farm Data Workflow — Project Constitution v0.5
-# Status: Baseline — environment confirmed, SDK registration pending
+# Status: Active development — environment confirmed, CN1 SDK registered
+# and in use (Stages 0-2 complete)
 # Last updated: 2026-06
 
 ---
@@ -103,8 +104,9 @@ Confirmed structure (from file inspection, Dec 2025 season):
 Ingestion path: CN1 SDK (.NET) called via pythonnet, outputs structured
 data objects → converted to GeoDataFrame → written as point shapefile.
 
-CN1 SDK registration: pending (develop.cnh.com)
-Also request: CN1 ADAPT Plugin (maps CN1 to open ADAPT data model)
+CN1 SDK registration: complete. SDK and CN1 ADAPT plugin (Voyager2Plugin,
+maps CN1 to open ADAPT data model) installed in sdk/cn1/ and in active use
+since Stage 0 (see scripts/cn1_sdk.py).
 
 ---
 
