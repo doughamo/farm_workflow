@@ -1,5 +1,6 @@
-# Farm Data Workflow — Project Constitution v0.6
-# Status: Active development — Stages 0-2 complete; Phase 2 vision captured
+# Farm Data Workflow — Project Constitution v0.7
+# Status: Active development — Stages 0-2 complete; Phase 2 vision and
+# zone map decision logic captured
 # Last updated: 2026-06
 
 ---
@@ -304,6 +305,23 @@ parallel via Path B interop during v1.
 | v0.6    | Phase 2 vision and architectural constraints captured (Section 17)   |
 | v0.6    | Phase 2 open items logged — zone map logic, API liability, AI        |
 |         | boundary, cooperative trigger (Section 17D)                          |
+| v0.7    | Zone map decision logic: readiness gate model adopted as           |
+|         | architectural pattern (Section 18A)                                |
+| v0.7    | Zone map confidence: four-level gradient framework (Section 18B)   |
+| v0.7    | Zone map input: nutrient-specific hierarchy confirmed (Section 18C) |
+| v0.7    | Soil survey: enhancing layer for nitrogen; primary input for        |
+|         | potassium, lime, gypsum, phosphorus (Section 18C)                  |
+| v0.7    | Farmer input: first-class provenance object at Levels 1-2;         |
+|         | advisory at Levels 3-4 (Section 18B)                               |
+| v0.7    | Zone map recommendation: structured object, not just shapefile      |
+|         | output; agronomist approves, modifies, or rejects (Section 18D)    |
+| v0.7    | Competitive positioning: pipeline automation and accessibility,     |
+|         | not analytical sophistication vs PCT Agcloud (Section 18B)         |
+| v0.7    | Zone map open items logged: recommendation content, level           |
+|         | thresholds, soil survey/nitrogen edge case, multi-nutrient         |
+|         | conflicts, review triggers (Section 18E)                           |
+| v0.7    | Next ideation session: product development planning — prototype     |
+|         | scope and market validation approach                               |
 
 ---
 
@@ -532,3 +550,230 @@ transition conversation with key clients? Without a defined trigger,
 the transition remains an aspiration rather than a planned event.
 Blocks: business planning and legal structure work; does not block
 platform development.
+
+---
+
+## 18. Zone Map Decision Logic
+
+### 18A — Architectural Pattern: Readiness Gate Model
+
+The zone map recommendation engine does not present a menu of options.
+It evaluates the current data state of a paddock for a given nutrient
+and routes through a sequential gate structure. Each gate is only
+reached if the prior gate is answered affirmatively.
+
+Gate 1 — Machinery capability
+  Is a variable rate capable display confirmed for this farm?
+  If no: workflow ends. No prescription is generated.
+  Captured at: farm onboarding (machine make, model, display type,
+  VR capability).
+
+Gate 2 — Data availability
+  What data has been collected and exists for this paddock?
+  Evaluated against: yield, protein, soil survey, imagery, OFE history.
+
+Gate 3 — Data accessibility and reliability
+  Of the available data, what is accessible in the platform and of
+  sufficient quality to use?
+  Filters for: format compatibility, calibration status, vintage,
+  cleaning pass rate, cloud mask coverage (imagery).
+
+Gate 4 — Prescription delivery method
+  Machinery API write, or manual shapefile export.
+  Captured at: farm onboarding.
+
+Gate 5 — OFE strip eligibility
+  Has the paddock reached sufficient data maturity to embed trial
+  strips and interpret response meaningfully?
+  Determined by: confidence level assignment (see Section 18B).
+
+---
+
+### 18B — Confidence Level Framework
+
+Zone map confidence is assigned per paddock per nutrient per season.
+It is not a fixed property of the paddock — it is re-evaluated each
+season as data accumulates.
+
+Confidence is a function of two variables in low-data situations:
+  (1) Statistical data quantity and quality
+  (2) Farmer validation — whether the zone pattern makes sense given
+      the farmer's direct observation of that paddock over time
+
+As data accumulates across seasons and OFE trial strip history builds,
+farmer validation transitions from co-validating to advisory. In
+high-data situations the recommendation is data-driven and does not
+require farmer validation to be defensible. This transition is gradual,
+not binary.
+
+**Level 1 — Minimum viable**
+Data state:   One season of yield data only. No protein, soil survey,
+              or imagery trend analysis available or reliable.
+Zone method:  Single-season yield clustering, k=3.
+Farmer input: Required and recorded as a named provenance input before
+              any prescription is generated. Farmer must confirm the
+              zone pattern is consistent with their paddock knowledge.
+OFE strips:   Not eligible — insufficient baseline to interpret
+              treatment response.
+
+**Level 2 — Developing**
+Data state:   Two or more seasons of yield; or one season of yield
+              plus one season of protein; or multi-year imagery trend
+              analysis confirming consistent spatial patterns.
+Zone method:  Averaged and normalised yield layers, or yield-protein
+              composite clustering. Zone boundary consistency assessed
+              across available seasons.
+Farmer input: Recommended. Platform flags any zone boundary that
+              shifted substantially between seasons and invites farmer
+              comment before finalising recommendation.
+OFE strips:   Conditional. Eligible if zone boundaries show reasonable
+              consistency across available seasons. Response
+              interpretation will carry wider confidence intervals than
+              Level 3 or 4 — this is stated explicitly in outputs.
+
+**Level 3 — Established**
+Data state:   Three or more seasons of yield and protein. Consistent
+              zone behaviour visible across seasons. At least one season
+              of embedded OFE trial strip data processed through the
+              pipeline.
+Zone method:  Multi-season averaged and normalised protein maps as
+              primary nitrogen zone input. Soil survey incorporated as
+              enhancing layer if available. Zone boundaries treated as
+              stable unless flagged for review.
+Farmer input: Advisory. Farmer review offered; platform recommendation
+              is data-driven and defensible without farmer override.
+OFE strips:   Standard practice. Embedded as routine; reviewed at
+              end of season via automated OFE analysis pipeline.
+
+**Level 4 — High confidence**
+Data state:   Soil survey zones delineated by soil type. Multiple
+              seasons of yield and protein confirming consistent zone
+              behaviour. Multi-season OFE trial strip history showing
+              nitrogen conversion efficiency by zone and rotation.
+Zone method:  Soil survey zones as structural foundation, validated
+              and refined by accumulated yield, protein, and OFE
+              response data. Zone boundaries stable unless anomalous
+              season or soil management change triggers review.
+Farmer input: Informational. Farmer receives zone map and supporting
+              evidence as a report, not a validation request.
+OFE strips:   Expected across main soil types by rotation.
+
+Expected market distribution at onboarding: most farms will arrive at
+Level 2 or crossing the Level 2→3 boundary. Level 4 is currently
+underserved — not due to farmer disengagement but due to poor data
+management practices at farm level, the cost of cleaning and processing,
+the expense of dedicated tools (e.g. PCT Agcloud), and a lack of
+trained practitioners. The platform addresses this gap through pipeline
+automation and interpretation support, not by competing on analytical
+sophistication against specialist tools.
+
+---
+
+### 18C — Nutrient-Specific Zone Map Input Hierarchy
+
+Zone map input selection is nutrient-specific. The same paddock will
+use different primary input layers depending on which nutrient is
+being prescribed. This is scientifically correct, not a simplification.
+
+Nitrogen:
+  Primary input:   Averaged and normalised protein maps from prior
+                   seasons (reflects actual crop nitrogen response
+                   under real seasonal conditions)
+  Enhancing layer: Soil survey (where available)
+  Fallback:        Single-season yield (Level 1) or multi-year
+                   imagery trend (Level 2 where protein absent)
+
+Potassium:
+  Primary input:   Soil survey zones delineated by soil type
+  Enhancing layer: Multi-season yield (confirms zone behaviour)
+  Fallback:        Multi-year imagery trend (where soil survey absent)
+
+Lime / Gypsum:
+  Primary input:   Soil survey zones (pH, sodicity — structural
+                   soil constraint inputs)
+  Enhancing layer: Yield response history where available
+
+Phosphorus:
+  Primary input:   Soil survey zones (baseline fertility)
+  Enhancing layer: Multi-season yield response
+
+Implication for platform architecture: nutrient type is a primary
+field in the zone map provenance record. The question "which zone
+map should be used" is only answerable once the nutrient is specified.
+Multi-nutrient prescriptions on the same paddock may use different
+zone maps — each is generated and recorded independently.
+
+---
+
+### 18D — Zone Map Recommendation Object
+
+The platform produces a structured recommendation object, not just a
+zone map shapefile. This object is what the agronomist reviews and
+approves, modifies, or rejects. Their decision — including any
+boundary modifications — becomes part of the zone map provenance record.
+
+Minimum required fields in recommendation object:
+  - Paddock ID and season
+  - Nutrient being prescribed
+  - Confidence level assigned (1–4) and basis for assignment
+  - Data layers used: type, vintage, quality flag for each
+  - Zone method applied
+  - Farmer input recorded (if Level 1 or 2)
+  - Soil survey status: used as primary / used as enhancing / absent
+  - Data quality flags (calibration warnings, coverage gaps, etc.)
+  - Agronomist decision: approved / modified / rejected
+  - If modified: boundary changes recorded with agronomist ID and date
+  - Zone map provenance hash: unique identifier linking this
+    recommendation object to the prescription file generated from it
+
+Note: the minimum structured content required for the agronomist to
+exercise genuine professional judgement without creating excessive
+workflow friction is an open item deferred to market validation
+(see Section 18E, Open Item 1).
+
+---
+
+### 18E — Zone Map Open Items
+
+**Open item 1 — Recommendation object minimum content**
+What is the minimum structured content of the recommendation object
+that allows an agronomist to exercise genuine professional judgement,
+without creating so much review friction that the efficiency gain is
+lost? There is a genuine tension between auditability and usability
+here. Resolution requires prototype testing with early adopter
+agronomists under realistic workflow conditions.
+Blocks: recommendation object UI design and agronomist review workflow.
+
+**Open item 2 — Data quality thresholds for level assignment**
+What is the precise threshold that moves a paddock from Level 1 to
+Level 2? Is it purely season count, or does data quality (calibration
+status, spatial coverage, cleaning pass rate) factor into the level
+assignment? A paddock with three seasons of poorly calibrated yield
+data may be less reliable than one with one season of well-calibrated
+data.
+Blocks: automated level assignment logic.
+
+**Open item 3 — Soil survey present but yield/protein absent (nitrogen)**
+How does the platform handle a paddock where soil survey exists but
+no yield or protein data is available, for a nitrogen prescription?
+Does it fall back to Level 1 with soil survey as a visual reference
+only, or does soil survey presence elevate the confidence level for
+nitrogen even though it is not the primary nitrogen input layer?
+Blocks: Level 1/2 boundary logic for nitrogen specifically.
+
+**Open item 4 — Multi-nutrient zone map conflicts**
+When nitrogen and potassium zone maps for the same paddock are derived
+from different input layers and produce different zone boundaries, how
+is a multi-nutrient prescription handled? Options include: separate
+prescriptions with separate zone maps per nutrient; a composite zone
+map negotiated between the two; or agronomist selection of which zone
+map to use as the spatial framework for all nutrients in that season.
+Blocks: multi-nutrient prescription module design.
+
+**Open item 5 — Zone boundary review triggers at Level 3 and 4**
+What triggers a zone boundary review in a high-confidence paddock?
+Candidates include: an anomalous season result, a change in soil
+management practice, a new soil survey, a prescribed number of seasons
+elapsed, or agronomist discretion. Who initiates the review — the
+platform, the agronomist, or the farmer?
+Blocks: zone map versioning and review workflow design.
