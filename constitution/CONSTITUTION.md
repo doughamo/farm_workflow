@@ -1,6 +1,5 @@
-# Farm Data Workflow — Project Constitution v0.5
-# Status: Active development — environment confirmed, CN1 SDK registered
-# and in use (Stages 0-2 complete)
+# Farm Data Workflow — Project Constitution v0.6
+# Status: Active development — Stages 0-2 complete; Phase 2 vision captured
 # Last updated: 2026-06
 
 ---
@@ -302,6 +301,9 @@ parallel via Path B interop during v1.
 | v0.5    | rgdal and rgeos removed from R packages; readOGR → sf::st_read      |
 | v0.5    | Circular source() bug in colors.R fixed                              |
 | v0.5    | Stage stubs 08–11 identified as not yet created in repo              |
+| v0.6    | Phase 2 vision and architectural constraints captured (Section 17)   |
+| v0.6    | Phase 2 open items logged — zone map logic, API liability, AI        |
+|         | boundary, cooperative trigger (Section 17D)                          |
 
 ---
 
@@ -335,3 +337,198 @@ R tool is runnable on modern R installations. Path B is unblocked.
 
 Path B is temporary scaffolding. It is retired when Stages 9–11 pass
 output validation against R tool results on the same input data.
+
+---
+
+## 17. Phase 2 Vision
+
+### 17A — Strategic Intent
+
+Phase 1 is a local-first pipeline operated by a single analyst on a
+single machine. It is not scaleable and is restricted by who can access
+and collaborate on the files it produces.
+
+Phase 2 transitions the platform to a web-based, multi-user application
+that solves both the access problem and the collaboration problem.
+
+Core market thesis: agronomists and farm business consultants do not
+currently spend time on paddock-level yield and protein analysis — not
+because the insight is valueless, but because the data-to-insight
+pipeline is too manual and time-expensive to convert into a billable
+service. Automating the pipeline creates a new service category: a
+routine paddock-level production analysis and OFE report that can be
+delivered at scale by a Precision Agriculture Analyst working across
+multiple farm clients.
+
+Target user: trained Precision Agriculture Analyst, agronomist, or
+competent farm operator. The platform is a professional tool requiring
+spatial data literacy and domain training. It is not designed for
+untrained end users. Attempting to serve both trained analysts and
+untrained farmers in a single interface produces a tool that serves
+neither — this tension is resolved by design, not deferred.
+
+Cooperative transition pathway: the platform launches as a commercial
+product. Once product-market fit is validated with real clients, the
+platform transitions to a farm data cooperative structure. The working
+assumption for the end state is a service provider model — the
+cooperative owns member data; the company retains the contracted
+technology role and derives revenue from the service contract, not
+data ownership. Exact transition terms, timing, and governance
+structure are to be negotiated with key clients and are explicitly
+undecided at this stage. This uncertainty is preserved deliberately —
+premature resolution of cooperative governance before product-market
+fit is the identified failure mode of publicly-funded agtech
+initiatives in Australia (WAFDS, AgriFood Data Exchange, OFT).
+
+Governing principles: NFF Australian Farm Data Code and FAIR
+(Findable, Accessible, Interoperable, Reusable) data principles apply
+as architectural commitments from the first line of production code —
+not as retrospective compliance.
+
+---
+
+### 17B — Confirmed Architectural Commitments
+
+The following commitments are binding design constraints for Phase 2.
+They are not open for reconsideration without a constitution update.
+
+**1. Member-attributed data residency**
+Every data record — yield files, protein maps, prescription histories,
+trial results, weather observations — carries a farm business identifier
+owned by the member, not the platform. Data is never pooled into a
+shared schema in a way that makes member-level separation technically
+difficult. This is the technical foundation of the cooperative data
+model and must be enforced from the initial schema design.
+
+**2. Data export as a first-class feature**
+Any member must be able to retrieve their complete data history in an
+interoperable format at any time, without friction or penalty. This is
+not an afterthought — it is the technical proof of the value-based
+retention claim. Farmers stay on the platform because it is better, not
+because leaving is hard. If data export is not built in from the start,
+it becomes commercially unappealing to implement later.
+
+**3. Trial design as a persistent platform object**
+On-farm experiment (OFE) trial strips are designed into prescription
+files — not overlaid afterwards. The prescription itself includes
+deliberate rate deviations functioning as treatment and control zones.
+The trial design metadata (which zones are treatment, which are
+control, target rates, nutrient type, season) must persist as a
+first-class platform object from prescription generation through to
+end-of-season OFE analysis. The platform holds state across an entire
+season per paddock. Manual re-entry of trial design at analysis time
+is not acceptable.
+
+**4. Zone map provenance as a required data object**
+The zone map used to generate a prescription is a derived output whose
+inputs vary by nutrient type and data availability:
+  - Nitrogen: averaged and normalised protein maps from prior seasons
+  - Potassium: soil survey zones
+  - Data-poor paddocks: fallback to single-season yield or imagery zones
+The platform must record not just which zone map was used, but why —
+from which input layers, by which selection logic, and at what date.
+Zone map provenance is a distinct and necessary data object, not an
+implicit consequence of storing the zone map file. The decision logic
+for input layer selection when multiple layers are available for the
+same nutrient is an open item (see Section 17D).
+
+**5. Bidirectional machinery API integration**
+Phase 2 integrates with John Deere Operations Center, AGCO, and CNH
+FieldOps via API in both directions:
+  - Read: yield monitor data, field operations records ingested
+    directly from manufacturer platforms — removing manual
+    export/import steps
+  - Write: prescription files delivered directly to machine displays
+    via API
+These are architecturally distinct operations. The write direction
+carries safety and liability implications not present in the read
+direction. Liability position for incorrect prescription delivery via
+API is an open item requiring legal input before this module is built
+(see Section 17D).
+
+**6. Bidirectional financial system integration**
+Phase 2 integrates with Xero and Figured in both directions:
+  - Pull: live grain prices, input costs, and interest rates into the
+    gross margin engine — replacing manually entered values
+  - Push: prescription costs, trial results, and gross margin outputs
+    back into farm financial records as farm management data
+The gross margin engine (Stage 11 in v1.1) is the integration point.
+
+**7. Agentic AI layer — data model boundary**
+The platform accumulates paddock-specific response functions via
+embedded OFE trial history and seasonal covariates (IoT weather
+stations, public datasets including SILO and BOM gridded products).
+The AI learning layer operates at two levels:
+  - Farm-specific models: trained on individual farm data, proprietary
+    to that farm business member
+  - Collective models: trained on pooled, anonymised cross-farm data,
+    owned by the cooperative
+These two layers must be architecturally separate from initial design.
+The technical mechanism for enforcing this boundary — not just
+contractually stating it — is an open item (see Section 17D).
+Cross-farm learning requires explicit member consent architecture;
+the consent model is an open item.
+
+---
+
+### 17C — Phase 2 Decisions Log
+
+| Version | Decision                                                              |
+|---------|-----------------------------------------------------------------------|
+| v0.6    | Phase 2 target: web-based multi-user platform                         |
+| v0.6    | Design-centre user: trained PA Analyst — not untrained farmer         |
+| v0.6    | Cooperative end state: service provider model (working assumption)     |
+| v0.6    | Governing principles: NFF Farm Data Code + FAIR — architectural,      |
+|         | not retrospective compliance                                          |
+| v0.6    | Machinery API: bidirectional confirmed (read and write)                |
+| v0.6    | Financial API: Xero/Figured bidirectional confirmed                   |
+| v0.6    | Trial design: persistent first-class platform object                  |
+| v0.6    | Zone map provenance: required data object, not implicit               |
+| v0.6    | Member data residency: farm-business-attributed from schema design    |
+| v0.6    | Data export: first-class feature, not afterthought                    |
+| v0.6    | AI layer: farm-specific and collective model weights architecturally  |
+|         | separated from initial design                                         |
+| v0.6    | Cooperative transition terms: explicitly undecided — to be           |
+|         | negotiated with key clients; premature resolution avoided             |
+
+---
+
+### 17D — Phase 2 Open Items
+
+The following questions are unresolved and must be addressed before
+their respective modules are designed or built. They follow the same
+pattern as the pykrige vs VESPER open item in Section 11 — explicitly
+flagged, not silently deferred.
+
+**Open item 1 — Zone map decision logic and provenance architecture**
+When multiple input layers are available for the same nutrient, what
+is the selection logic? Does the agronomist select the input layer, or
+does the platform recommend one? If the platform recommends, on what
+basis? The answer encodes agronomic judgement into the platform and
+must be resolved in consultation with agronomist partners before the
+zone generation module is designed for Phase 2.
+Blocks: zone map module design.
+
+**Open item 2 — Prescription write liability**
+When a prescription file is written via API directly to a John Deere
+or AGCO display and results in an incorrect application, who carries
+the liability — the platform, the agronomist, the PA Analyst, or the
+farmer? This requires legal input specific to Australian agricultural
+services before the write integration is architected.
+Blocks: machinery API write module design.
+
+**Open item 3 — AI layer data model boundary**
+How is the boundary between farm-specific model weights and collective
+model weights technically enforced — not just contractually stated?
+What is the consent architecture for cross-farm learning — per data
+type, per model, or per use case? This requires a conceptual
+specification before the AI layer is designed.
+Blocks: agentic AI module design.
+
+**Open item 4 — Cooperative transition trigger**
+What is the specific milestone — client count, data volume, revenue
+threshold, or governance event — that triggers the cooperative
+transition conversation with key clients? Without a defined trigger,
+the transition remains an aspiration rather than a planned event.
+Blocks: business planning and legal structure work; does not block
+platform development.
