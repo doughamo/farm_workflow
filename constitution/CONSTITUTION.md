@@ -1,4 +1,4 @@
-# Farm Data Workflow — Project Constitution v0.4
+# Farm Data Workflow — Project Constitution v0.5
 # Status: Baseline — environment confirmed, SDK registration pending
 # Last updated: 2026-06
 
@@ -133,18 +133,18 @@ Method: per-machine mean normalisation before pyprecag cleaning.
 
 ---
 
-## 9. Workflow Stages — v1
+## 9. Workflow Stages
 
-Stage 0  cn1_to_points     Convert CN1 ZIP → point shapefile
-Stage 1  ingest            Validate inputs, log metadata
-Stage 2  clean_yield       Per-machine normalisation + pyprecag
-Stage 3  clean_protein     CropScan CSV → cleaned point shapefile
-Stage 4  normalise         Interpolate to raster, z-score normalise
-Stage 5  zones             K-Means clustering (k=3), spatial filter
-Stage 6  handoff           Zone summary CSV + PDF map for agronomist
-         [manual]          Agronomist assigns N rate per zone
-Stage 7  prescription      Join rates → AFS-compatible shapefile
-Stage 8  ofe_prep          [Path B interop] Write cleaned yield shapefile
+Stage 0   cn1_to_points    Convert CN1 ZIP → point shapefile
+Stage 1   ingest           Validate inputs, log metadata
+Stage 2   clean_yield      Per-machine normalisation + pyprecag
+Stage 3   clean_protein    CropScan CSV → cleaned point shapefile
+Stage 4   normalise        Interpolate to raster, z-score normalise
+Stage 5   zones            K-Means clustering (k=3), spatial filter
+Stage 6   handoff          Zone summary CSV + PDF map for agronomist
+          [manual]         Agronomist assigns N rate per zone
+Stage 7   prescription     Join rates → AFS-compatible shapefile
+Stage 8   ofe_prep         [Path B interop] Write cleaned yield shapefile
                            to data/interop/r_input/. Validate R tool
                            outputs are present in data/interop/r_output/
                            before downstream reporting depends on them.
@@ -168,32 +168,54 @@ when Path B interop is retired.
 ## 10. Folder Structure
 
 farm_workflow/
-├── constitution/         <- this file and decision log
+├── constitution/
+│   └── CONSTITUTION.md       <- this file
 ├── data/
 │   ├── raw/
-│   │   ├── yield/        <- CN1 ZIPs and converted point shapefiles
-│   │   ├── protein/      <- CropScan CSV files
-│   │   ├── boundaries/   <- paddock boundary shapefiles
-│   │   ├── treatments/   <- treatment zone shapefiles (v1.1)
-│   │   └── soil/         <- reserved
+│   │   ├── yield/            <- CN1 ZIPs and converted point shapefiles
+│   │   ├── protein/          <- CropScan CSV files
+│   │   ├── boundaries/       <- paddock boundary shapefiles
+│   │   ├── treatments/       <- treatment zone shapefiles (v1.1)
+│   │   └── soil/             <- reserved
 │   ├── processed/
-│   │   ├── yield/        <- cleaned point shapefiles
-│   │   ├── protein/      <- cleaned point shapefiles
-│   │   └── rasters/      <- normalised GeoTIFFs
+│   │   ├── yield/            <- cleaned point shapefiles
+│   │   ├── protein/          <- cleaned point shapefiles
+│   │   └── rasters/          <- normalised GeoTIFFs
 │   ├── interop/
-│   │   ├── r_input/      <- Python writes here; R tool reads from here
-│   │   └── r_output/     <- R tool writes here; Python reads from here
+│   │   ├── r_input/          <- Python writes here; R tool reads from here
+│   │   └── r_output/         <- R tool writes here; Python reads from here
 │   └── outputs/
-│       ├── zones/        <- management zone shapefiles
-│       ├── handoff/      <- CSVs and PDFs for agronomist
-│       ├── ofe/          <- OFE analysis outputs (v1.1)
-│       └── prescriptions/<- final AFS prescription shapefiles
-├── scripts/              <- numbered pipeline scripts
-├── config/               <- paddock_config.yaml
-├── logs/                 <- run logs
+│       ├── zones/            <- management zone shapefiles
+│       ├── handoff/          <- CSVs and PDFs for agronomist
+│       ├── ofe/              <- OFE analysis outputs (v1.1)
+│       └── prescriptions/    <- final AFS prescription shapefiles
+├── scripts/                  <- Python pipeline (numbered, sequential)
+│   ├── utils.py              <- shared logging and run tracking
+│   ├── 00_cn1_to_points.py   <- stub
+│   ├── 01_ingest.py          <- stub
+│   ├── 02_clean_yield.py     <- stub
+│   ├── 03_clean_protein.py   <- stub
+│   ├── 04_normalise.py       <- stub
+│   ├── 05_zones.py           <- stub
+│   ├── 06_handoff.py         <- stub
+│   ├── 07_prescription.py    <- stub
+│   ├── 08_ofe_prep.py        <- stub (to be created)
+│   ├── 09_ofe_analysis.py    <- stub (to be created)
+│   ├── 10_gwr.py             <- stub (to be created)
+│   └── 11_gross_margin.py    <- stub (to be created)
+├── r_ofe/                    <- R Shiny OFE tool (Path B, temporary)
+│   ├── colors.R              <- main Shiny app (launch this file)
+│   ├── grid.R                <- colour and legend utilities
+│   └── myReadOGR.R           <- kriging interpolation functions
+├── config/
+│   └── paddock_config.yaml   <- all pipeline parameters
+├── logs/                     <- run logs
 ├── sdk/
-│   └── cn1/             <- CN1 SDK DLLs (not committed to git)
+│   └── cn1/                  <- CN1 SDK DLLs (not committed to git)
 └── README.md
+
+Note: app.R removed. The Shiny app launches from colors.R directly
+via the shinyApp(ui, server) call at the bottom of that file.
 
 ---
 
@@ -273,6 +295,11 @@ parallel via Path B interop during v1.
 | v0.4    | R-to-Python port targets: gstat → pykrige, GWmodel → mgwr           |
 | v0.4    | mgwr added to pip dependencies for Stage 10 (GWR port)              |
 | v0.4    | Kriging tool decision (pykrige vs VESPER) deferred — open item       |
+| v0.5    | R scripts placed in r_ofe/ (top-level, separate from scripts/)       |
+| v0.5    | app.R removed — Shiny app launches from colors.R directly            |
+| v0.5    | rgdal and rgeos removed from R packages; readOGR → sf::st_read      |
+| v0.5    | Circular source() bug in colors.R fixed                              |
+| v0.5    | Stage stubs 08–11 identified as not yet created in repo              |
 
 ---
 
@@ -300,12 +327,9 @@ Data contract:
 Stage 8 (ofe_prep.py) manages this handoff and validates both sides
 before any downstream stage proceeds.
 
-R Shiny tool prerequisite: rgdal was removed from CRAN in October 2023.
-The R tool uses readOGR (rgdal) and cannot run on a modern R
-installation without remediation. Required fix before Path B can
-function: replace readOGR with sf::st_read and update all sp/rgdal
-spatial object handling to sf equivalents throughout the R codebase.
-This is a prerequisite task, not optional.
+R Shiny tool status: rgdal and rgeos dependencies removed (v0.5).
+readOGR replaced with sf::st_read. Circular source() bug fixed.
+R tool is runnable on modern R installations. Path B is unblocked.
 
 Path B is temporary scaffolding. It is retired when Stages 9–11 pass
 output validation against R tool results on the same input data.

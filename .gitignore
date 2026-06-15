@@ -29,6 +29,7 @@ data/raw/boundaries/*.shx
 data/raw/boundaries/*.prj
 data/raw/boundaries/*.cpg
 data/raw/soil/
+data/raw/yield/*.CN1/
 data/processed/
 data/outputs/
 
@@ -47,3 +48,8 @@ desktop.ini
 # Jupyter (if used later)
 .ipynb_checkpoints/
 *.ipynb
+
+# R
+.Rhistory
+.RData
+.Rproj.user/

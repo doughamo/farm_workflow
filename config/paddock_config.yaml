@@ -6,10 +6,12 @@
 # RUN METADATA
 # -----------------------------------------
 run:
-  paddock_id: "NRTWR9P2"          # Must match folder/file naming convention
-  paddock_name: "0L6"             # Human-readable name
-  farm_name: "Maradah & Lakeview"
-  season: "2025"
+  paddock_id: "WALGON"            # Must match folder/file naming convention
+  paddock_name: "WALGON"          # Human-readable name; must match Field
+                                   # description in the CN1/ADAPT catalog and
+                                   # FIELD_NAME in boundary_shp
+  farm_name: "WALGON"
+  season: "2024"
   crop: "wheat"                   # wheat | barley | canola | pulse
   operator: "Barry"
   run_date: null                  # Set automatically at runtime (ISO 8601)
@@ -19,9 +21,9 @@ run:
 # INPUT FILES
 # -----------------------------------------
 inputs:
-  cn1_zip: "data/raw/yield/2025-12-19-14-00-12.zip"
+  cn1_path: "data/raw/yield/260406O2.CN1"   # extracted CN1 folder (not a zip)
   protein_csv: "data/raw/protein/<filename>.csv"
-  boundary_shp: "data/raw/boundaries/<paddock>.shp"
+  boundary_shp: "data/raw/boundaries/fields.shp"
 
 # -----------------------------------------
 # PROTEIN CSV COLUMN MAPPING
@@ -43,15 +45,24 @@ crs:
   # Zone 50 covers 114-120E. Change to 28351 (Zone 51) if paddock > 120E.
 
 # -----------------------------------------
+# INGEST / VALIDATION PARAMETERS
+# -----------------------------------------
+ingest:
+  boundary_buffer_m: 30          # tolerance for GPS noise at field edges
+  max_outside_boundary_pct: 5    # warn if more than this % of points fall outside
+
+# -----------------------------------------
 # YIELD CLEANING PARAMETERS
 # -----------------------------------------
 yield_cleaning:
-  machine_id_field: null         # CN1 SDK field name - set after SDK confirmed
+  machine_id_field: "machine_id" # Set by 00_cn1_to_points.py from CN1 SDK
   machine_offset_warn_pct: 15    # Flag offset > this % of grand mean
   speed_min_kmh: 3.0
   speed_max_kmh: 12.0
   yield_lower_pct: 2
   yield_upper_pct: 98
+  outlier_stdevs: 3               # pyprecag stdevs param (iterative trim threshold)
+  thin_dist_m: 1.0                 # pyprecag thin_dist_m param (min point spacing)
 
 # -----------------------------------------
 # PROTEIN CLEANING PARAMETERS
