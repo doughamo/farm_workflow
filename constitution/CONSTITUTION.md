@@ -1,6 +1,7 @@
-# Farm Data Workflow — Project Constitution v0.7
-# Status: Active development — Stages 0-2 complete; Phase 2 vision and
-# zone map decision logic captured
+# Farm Data Workflow — Project Constitution v0.8
+# Status: Active development — Stages 0-2 complete; Phase 2 vision,
+# zone map decision logic, OFE strip alignment, cropping recipes,
+# crop plan integration, and FMS actuals architecture captured
 # Last updated: 2026-06
 
 ---
@@ -777,3 +778,305 @@ management practice, a new soil survey, a prescribed number of seasons
 elapsed, or agronomist discretion. Who initiates the review — the
 platform, the agronomist, or the farmer?
 Blocks: zone map versioning and review workflow design.
+
+---
+
+## 19. OFE Trial Strip Alignment and Australian Cropping Context
+
+### 19A — Machinery Run Line Alignment
+
+Trial strip placement must be parallel to the machinery run line heading for the
+paddock. A strip oriented perpendicular to the run line direction cannot be
+implemented by the operator without deviating from their operational heading and
+is therefore not a valid strip design.
+
+Machinery run line heading is a required input to the OFE trial strip design
+workflow. It cannot be derived from the zone map alone.
+
+Required field added to trial strip design object:
+  - machinery_run_line_heading: primary heading in degrees from north, or
+    cardinal/intercardinal classification
+  - run_line_consistency: flag for paddocks where multiple headings exist due
+    to irregular shape, internal obstacles, or slope adjustments. Where
+    consistency is uncertain, the strip placement is flagged for agronomist
+    review before finalisation.
+
+Data source for run line heading (in order of preference):
+  1. Extracted from CN1 harvest GPS tracks (indirect dependency on yield
+     ingestion pipeline being operational)
+  2. Recorded at farm onboarding by PA Analyst
+  3. Manually entered by agronomist at strip design time
+
+Open item — Run line heading source dependency: if derived from CN1 tracks,
+the OFE strip design workflow cannot be validated until at least one season
+of yield data has been ingested for the paddock. This dependency must be
+stated explicitly in the strip design workflow and surfaced to the agronomist
+at design time if CN1 data is absent.
+
+---
+
+### 19B — Australian Grain Cropping Operational Recipes
+
+Grain cropping in the Australian broadacre context has a well-defined base
+operational recipe per season. Complexity layers onto this base according to
+rainfall zone, farm management sophistication, and data availability. The
+platform must understand this recipe structure to automate prescription
+recommendations by paddock and management zone.
+
+Base seasonal recipe (in sequence):
+  1. Summer weed management — herbicide
+  2. Pre-planting weed management — herbicide
+  3. Planting — seed + starter phosphorus + starter nitrogen
+  4. In-crop herbicide
+  5. Top-up nitrogen
+  6. Fungicide
+  7. Harvest
+
+Complexity layers — additional inputs:
+  Additional nitrogen applications (rainfall-driven), lime, gypsum, fungicide
+  (additional passes), plant growth regulators, soil wetting agents, potassium,
+  additional phosphorus.
+
+Complexity layers — physical management practices:
+  Deep ripping, mouldboard ploughing, spading, stubble burning, stubble
+  mulching. These are periodic interventions triggered by identified soil
+  constraints, not annual events.
+
+Complexity layers — data-driven inputs:
+  Soil testing, plant tissue testing, soil penetrometer readings. These
+  generate prescriptions for constraint remediation: subsoil compaction
+  (physical intervention), acidity (lime), sodicity (gypsum).
+
+Rainfall zone axis:
+
+  Low rainfall environment:
+    Primary constraint:   Water availability
+    Risk posture:         Conservative
+    Input rates:          Lower
+    Paddock traversals:   Fewer
+    Crop rotation:        Narrow — predominantly wheat and barley
+    Fallowing:            Common — moisture conservation between seasons
+    Farm scale:           Larger area
+
+  High rainfall environment:
+    Primary constraint:   Management practice
+    Risk posture:         Less conservative
+    Input rates:          Higher
+    Paddock traversals:   More frequent
+    Crop rotation:        Broader and more diverse
+    Fallowing:            Uncommon
+    Farm scale:           Smaller area
+
+Rainfall zone is a required field at farm onboarding. It is not a derived
+value. It contextualises prescription rate plausibility checking — a rate
+that is agronomically normal in a high rainfall environment may be anomalous
+in a low rainfall environment and should be flagged accordingly.
+
+Architectural implication — in-season input history:
+  The platform must carry a complete input history for each paddock within a
+  season. Each prescription generation event must have access to what has
+  already been applied in that paddock that season — product, rate, date,
+  method. A nitrogen top-up recommendation generated without knowledge of the
+  starter nitrogen rate applied at planting is agronomically incomplete.
+  In-season input history is a required data model component, not optional
+  context.
+
+Architectural implication — physical intervention prescriptions:
+  The current zone map framework (Section 18C) addresses fertility and nutrient
+  prescriptions. Physical management practices (deep ripping zones, spading
+  zones) require a distinct spatial layer — typically soil penetrometer data
+  or known compaction maps — that is neither a yield layer nor a nutrient
+  fertility layer. v1 scope boundary decision required: see Open Item 1 below.
+
+---
+
+### 19C — Crop Plan as Seasonal Prescription Context
+
+Farmers begin each season with a paddock-level crop plan derived primarily
+from the previous crop rotation. This plan defines the expected operational
+recipe and yield target for that paddock and season.
+
+The crop plan is not static. It is revised in-season in response to rainfall
+deviation from expectation:
+  - Rainfall above expectation: yield potential increases, nitrogen budget
+    increases, additional input passes may be added to the recipe
+  - Rainfall below expectation: yield potential contracts, planned input
+    passes may be reduced or eliminated to protect margin
+
+The platform cannot treat the crop plan as a static input read once at
+season start. It is a living document that must be confirmed current at
+each prescription generation event mid-season.
+
+Crop plan content relevant to prescription generation (minimum):
+  - Crop species and variety (determines yield potential ceiling, nitrogen
+    response curve, disease susceptibility, fungicide program requirements)
+  - Intended planting date and seeding rate
+  - Planned input program — starter rates, top-up timing and rates,
+    herbicide program
+  - Expected yield target (basis for nitrogen budgeting)
+  - Rotation history — prior seasons' crops, disease break logic,
+    nitrogen carry-over assumptions
+
+Yield target is a required named field in the prescription recommendation
+object (Section 18D). Required provenance fields alongside it:
+  - Source: FMS-sourced / analyst-entered / defaulted
+  - Date last confirmed
+
+Agronomist role in crop planning:
+  The agronomist will typically create the initial crop plan and budget on
+  behalf of the grower. The platform must support this workflow — the
+  agronomist is the primary plan author, not the farmer.
+
+FMS integration approach:
+  Farm Management Software (AgWorld, BackPaddock, and equivalents) is the
+  standard repository for crop plans in the target market. Not all FMS
+  platforms expose APIs. Integration feasibility must be assessed per
+  platform and per client at onboarding.
+
+  Where FMS API is available: read crop plan at season start; monitor for
+  in-season updates; write completed prescription records back as activity
+  records (bidirectional).
+
+  Where FMS API is unavailable: PA Analyst confirms or updates crop plan
+  context manually before each prescription generation event. The platform
+  must not treat FMS connectivity as a hard dependency.
+
+---
+
+### 19D — FMS Data Reliability and Actuals Recording Architecture
+
+FMS records cannot be relied upon as accurate records of in-season
+applications, crop species, or variety. Farmers and farm workers frequently
+do not update actuals into the FMS during the season. The FMS holds a plan;
+it does not reliably hold a record of what happened.
+
+This is a structural behaviour problem, not a technology problem. The
+incentive to record actuals is weak and deferred; the cost of not recording
+is invisible until the data is needed. Any solution that relies on improving
+farmer recording discipline as its primary mechanism will fail.
+
+Authoritative actuals source: machinery telematics.
+
+Telematics records the physical operation as a byproduct of machine
+operation — no deliberate data entry required. Coverage by operation type:
+  - Harvest:     GPS track, yield, timing (CN1 — already in pipeline)
+  - Planting:    Seeding rate, GPS track, variety (if programmed into
+                 controller)
+  - Fertiliser:  Application rate, GPS track
+  - Spraying:    Product (if programmed), rate, GPS track
+  - Tillage:     GPS track, timing
+
+Telematics limitation: records the physical operation but not always the
+agronomic intent. Product in the bin, target rate rationale, and whether
+an application was planned or corrective require resolution beyond what
+telematics can confirm.
+
+AI agent — actuals reconciliation mediator:
+  The agent detects a telematics-confirmed operation, compares it against
+  the crop plan, identifies data gaps, and resolves them through targeted
+  dialogue with the farmer or farm worker who performed the operation.
+  Resolved actuals are written back to the FMS, maintaining an accurate
+  season history without requiring the farmer to initiate recording.
+
+  The agent's function here is narrow and deterministic: it is resolving
+  known data gaps through structured questions, not making agronomic
+  judgements. This is a low-risk agentic application.
+
+  Required conditions for reliable operation:
+    1. Consistent telematics coverage across the farm's machinery fleet
+    2. Timely query delivery — questions must reach the operator while
+       recall is accurate, ideally within 24 hours of the operation
+    3. Consistent use across seasons — the actuals record compounds in
+       value over multiple seasons of consistent capture
+
+Notification and response channel:
+  The farm worker interaction pattern is reactive, mobile, and time-
+  sensitive. A workflow requiring farm workers to log into a desktop
+  platform to respond to actuals queries will fail for the same reasons
+  FMS self-recording currently fails. The outbound query channel must
+  reach the operator in the field — SMS or minimal mobile interface is
+  the target; full platform login is not acceptable as the primary path.
+
+User role implication:
+  Two distinct interaction patterns are required:
+
+  Agronomist / PA Analyst:
+    Creates and manages crop plans; reviews prescription recommendations;
+    approves zone map recommendation objects; interprets OFE outputs.
+    Primary platform interface: desktop, full feature access.
+
+  Farmer / farm worker:
+    Responds to actuals queries; confirms operations; receives
+    prescription delivery notifications.
+    Primary interface: SMS or minimal mobile — reactive, not initiating.
+
+  This role distinction is an architectural commitment, not a UX
+  preference. It must be stated before Phase 2 UI design begins as it
+  materially affects the notification architecture and mobile interface
+  requirements.
+
+FMS write-back architecture:
+  Agent-mediated write-back (telematics + dialogue resolution) is the
+  preferred actuals recording architecture over direct FMS API
+  integration. It produces a more reliable record by incorporating
+  telematics confirmation and resolving ambiguities through dialogue,
+  and it bypasses the API availability constraint.
+
+  FMS API integration is pursued where APIs exist and client
+  concentration makes it worthwhile. It is not a platform dependency.
+
+  The provenance record must distinguish between:
+    - Telematics-confirmed actuals
+    - Agent-dialogue-resolved actuals
+    - Agronomist-entered actuals (farm visit reconciliation)
+    - Unresolved actuals (escalated to agronomist)
+
+  Unresolved actuals queries — where the farmer has not responded
+  within a defined window — must escalate to the agronomist. Silent
+  propagation of unresolved data gaps into the season input history
+  is not permitted.
+
+---
+
+### 19E — Section 19 Open Items
+
+**Open item 1 — Physical intervention prescription scope boundary**
+Does the platform scope to spatial prescription of physical management
+practices (deep ripping zones, spading zones) in v1, or is v1 explicitly
+scoped to fertility and nutrient prescriptions only? If the former, Section
+18C requires an additional input hierarchy for physical constraint management
+(penetrometer data, compaction maps). If the latter, the boundary must be
+stated explicitly.
+Blocks: Section 18C extension and physical constraint data model.
+
+**Open item 2 — Run line heading data source dependency**
+Where run line heading is derived from CN1 harvest GPS tracks, the OFE
+strip design workflow cannot be validated until at least one season of yield
+data has been ingested. What is the fallback for new paddocks with no CN1
+history — manual entry only, or is onboarding data collection sufficient?
+Blocks: OFE strip design workflow for new farm onboarding.
+
+**Open item 3 — In-season input history data model**
+What is the data structure for the in-season input history per paddock —
+specifically, how are telematics-confirmed actuals, agent-resolved actuals,
+and manually-entered actuals stored and distinguished in the same record?
+Blocks: prescription generation context and actuals reconciliation agent.
+
+**Open item 4 — Actuals query response window and escalation threshold**
+What is the maximum time window before an unanswered actuals query
+escalates from farmer/farm worker to agronomist? What is the escalation
+mechanism — platform notification, email, or SMS to agronomist?
+Blocks: actuals reconciliation agent workflow design.
+
+**Open item 5 — Telematics coverage profile at onboarding**
+What proportion of farms in the target client base have telematics-enabled
+machinery with accessible data? Where coverage is absent or partial, what
+is the fallback actuals recording pathway and how is it distinguished in
+the provenance record?
+Blocks: actuals reconciliation agent viability assessment at launch.
+
+**Open item 6 — FMS API availability by platform**
+Which FMS platforms are used by the agronomist consulting partner's current
+client portfolio? Of these, which expose usable APIs for read and write?
+Client concentration in one platform would simplify the integration roadmap.
+Blocks: FMS integration prioritisation for Phase 2 build.
