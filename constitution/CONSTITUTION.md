@@ -1,5 +1,6 @@
-# Farm Data Workflow — Project Constitution v0.8
-# Status: Active development — Stages 0-2 complete; Phase 2 vision,
+# Farm Data Workflow — Project Constitution v0.9
+# Status: Active development — Stages 0-6 implemented and audited
+# (see CALCULATIONS_AUDIT.md); Stage 7 stub only; Phase 2 vision,
 # zone map decision logic, OFE strip alignment, cropping recipes,
 # crop plan integration, and FMS actuals architecture captured
 # Last updated: 2026-06
@@ -244,6 +245,28 @@ options. The relationship between them — which is canonical for which
 stage — is an open decision to be resolved and logged before Stage 4
 is built. See Section 15.
 
+Audit finding (2026-06, CALCULATIONS_AUDIT.md, risk item R-07): Stage 4
+has now been built, and paddock_config.yaml currently declares the
+interpolation method as "vesper". The code that actually runs performs
+linear interpolation — neither pykrige nor VESPER are called. This does
+not resolve the open item above; it adds evidence to it, and reveals
+that the logged configuration is currently a false statement about what
+the pipeline does. Until the open item above is resolved, the config
+value should read "linear" so the provenance record is honest about
+current behaviour. See Section 15.
+
+Open item — pyprecag patch version control (2026-06, CALCULATIONS_AUDIT.md,
+risk item R-05): pyprecag has been patched locally for this project, and
+the patch is not currently tracked in version control. A conda/pip
+environment rebuild — new machine, new analyst, multi-farm scaling —
+would silently revert to unpatched upstream pyprecag behaviour with no
+error raised. Resolution options: (1) fork pyprecag and pin the
+environment to a specific commit of the fork; (2) extract the patched
+logic out of the dependency entirely into utils.py as a post-processing
+override, leaving the installed package untouched; (3) commit the patch
+file into the repo with a documented reapplication step run after
+install. Not yet decided. See Section 15.
+
 IDE: VS Code + Python extension
 Version control: Git + GitHub
 
@@ -323,6 +346,14 @@ parallel via Path B interop during v1.
 |         | conflicts, review triggers (Section 18E)                           |
 | v0.7    | Next ideation session: product development planning — prototype     |
 |         | scope and market validation approach                               |
+| v0.9    | Calculation audit completed for Stages 0-6 (CALCULATIONS_AUDIT.md   |
+|         | v1.0) — 29 calculation steps documented, 10 risk items logged        |
+| v0.9    | Stage 4 interpolation discrepancy logged (R-07): config declares    |
+|         | VESPER, code runs linear interpolation — pykrige vs VESPER open      |
+|         | item updated with this evidence, not resolved (Section 11)          |
+| v0.9    | New open item logged: pyprecag local patches not under version       |
+|         | control (R-05) — resolution path (fork-and-pin / extract-to-utils /  |
+|         | commit-patch-file) undecided (Section 11)                            |
 
 ---
 
