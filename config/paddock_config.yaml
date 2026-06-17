@@ -11,7 +11,7 @@ run:
                                    # description in the CN1/ADAPT catalog and
                                    # FIELD_NAME in boundary_shp
   farm_name: "WALGON"
-  season: "2024"
+  season: "2025"
   crop: "wheat"                   # wheat | barley | canola | pulse
   operator: "Barry"
   run_date: null                  # Set automatically at runtime (ISO 8601)
@@ -21,8 +21,10 @@ run:
 # INPUT FILES
 # -----------------------------------------
 inputs:
-  cn1_path: "data/raw/yield/260406O2.CN1"   # extracted CN1 folder (not a zip)
-  protein_csv: "data/raw/protein/<filename>.csv"
+  cn1_paths:                                 # one or more CN1 files to process
+    - "data/raw/yield/260406O2.CN1"
+    - "data/raw/yield/260407Q3.CN1"
+  protein_csv: "data/raw/protein/2025/NG & EI HAMILTON_WALGON_WALGON_SN2128_2025-MAP.csv"
   boundary_shp: "data/raw/boundaries/fields.shp"
 
 # -----------------------------------------
@@ -71,6 +73,9 @@ protein_cleaning:
   protein_min_pct: 5.0
   protein_max_pct: 25.0
   zscore_flag_threshold: 3.0
+  coverage_warn_passes: 2    # warn if gap > this many implement widths
+  coverage_fail_passes: 4    # insufficient if gap > this many implement widths
+  coverage_fail_area_pct: 5  # % of harvested area beyond fail threshold → insufficient
 
 # -----------------------------------------
 # RASTER / INTERPOLATION PARAMETERS
@@ -87,6 +92,7 @@ zones:
   n_zones: 3
   min_zone_area_ha: 2.0
   random_seed: 42
+  smooth_passes: 3        # majority-filter passes before vectorisation (0 = off)
 
 # -----------------------------------------
 # PRESCRIPTION PARAMETERS

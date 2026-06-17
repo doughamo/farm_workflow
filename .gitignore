@@ -22,7 +22,7 @@ data/raw/yield/*.dbf
 data/raw/yield/*.shx
 data/raw/yield/*.prj
 data/raw/yield/*.cpg
-data/raw/protein/*.csv
+data/raw/protein/**
 data/raw/boundaries/*.shp
 data/raw/boundaries/*.dbf
 data/raw/boundaries/*.shx
