@@ -111,13 +111,28 @@ zones:
 prescription:
   input_type: "nitrogen"
   rate_unit: "kg/ha"
-  rate_field_name: "RATE"
-  default_rate_field: "DEF_RATE"
+  rate_field_name: "RATE"        # AFS display attribute name for prescribed rate
+  default_rate_field: "DEF_RATE" # AFS default rate (covers any unzoned area / headlands)
   min_rate_field: "MIN_RATE"
   max_rate_field: "MAX_RATE"
-  default_rate: null
+  default_rate: null             # null → computed as mean of assigned zone rates
   min_rate: 0
   max_rate: 200
+
+# -----------------------------------------
+# REFERENCE STRIP PARAMETERS
+# Stage 7 injects a reference (nil-rate control) strip into every nitrogen
+# VR prescription by default.  Purpose: keep the paddock eligible for
+# multi-season pooling next season (Section 9 / Section 13).
+# -----------------------------------------
+reference_strip:
+  enabled: true
+  rate_kg_ha: 0     # rate applied inside the strip (0 = nil-rate; or set to a uniform rate)
+  width_m: 24       # strip width — approximately 2 header passes
+  heading_deg: null # strip orientation in degrees clockwise from north;
+                    # null = auto-derived from the longest axis of the paddock boundary
+  geometry_shp: null # optional path to a pre-drawn strip shapefile;
+                     # if provided, overrides auto-generation
 
 # -----------------------------------------
 # OUTPUT PATHS
