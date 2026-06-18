@@ -82,8 +82,19 @@ protein_cleaning:
 # -----------------------------------------
 raster:
   resolution_m: 10
-  interpolation_method: "vesper"  # vesper | pykrige
+  interpolation_method: "linear"  # linear | pykrige  (vesper not yet implemented — Section 11 R-07)
   kriging_type: "local"
+
+# -----------------------------------------
+# PROTEIN YIELD CORRELATION MATRIX PARAMETERS
+# Used by Stage 5 when protein data is available (confidence Level 2+).
+# -----------------------------------------
+protein_yield_matrix:
+  critical_protein_threshold: 10.5  # % protein — above this = "high protein" (Engel & Long 1999)
+  yield_axis_method: "median"        # median | french_schultz
+  # Required when yield_axis_method = "french_schultz":
+  french_schultz_gsrainfall_mm: null # growing-season rainfall (mm) — set before each run
+  french_schultz_wue_t_ha_mm: 0.015  # water-use efficiency (t grain/ha/mm); WA wheat default
 
 # -----------------------------------------
 # ZONE DELINEATION PARAMETERS

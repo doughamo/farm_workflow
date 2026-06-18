@@ -29,13 +29,19 @@ EXTRA_COLOURS = ["#4575b4", "#74add1", "#abd9e9"]
 
 
 def zone_colour(zone_id, n_zones):
-    if n_zones <= len(ZONE_COLOURS):
-        return ZONE_COLOURS.get(zone_id, "#999999")
-    return EXTRA_COLOURS[zone_id - len(ZONE_COLOURS) - 1]
+    # Zones 1–3 always get their fixed traffic-light colours regardless of n_zones.
+    # Extra zones (4+) fall back to EXTRA_COLOURS by overflow index.
+    if zone_id in ZONE_COLOURS:
+        return ZONE_COLOURS[zone_id]
+    extra_idx = zone_id - len(ZONE_COLOURS) - 1
+    if 0 <= extra_idx < len(EXTRA_COLOURS):
+        return EXTRA_COLOURS[extra_idx]
+    return "#999999"
 
 
 def write_csv(zone_gdf, out_path, protein_available):
     """Write zone summary CSV with blank N rate column for agronomist."""
+    has_label = "zone_label" in zone_gdf.columns
     rows = []
     for _, row in zone_gdf.sort_values("zone_id").iterrows():
         r = {
@@ -49,6 +55,8 @@ def write_csv(zone_gdf, out_path, protein_available):
             r["mean_protein_pct"] = round(float(mp), 2) if mp and not np.isnan(float(mp)) else ""
             pp = row.get("prot_pts")
             r["protein_pts"] = int(pp) if pp and not np.isnan(float(pp)) else 0
+        if has_label:
+            r["zone_label"] = row.get("zone_label", "")
         r["n_rate_kg_ha"] = ""
         r["notes"] = ""
         rows.append(r)
@@ -90,7 +98,7 @@ def add_north_arrow(ax):
 
 
 def make_pdf(zone_gdf, boundary_gdf, paddock_id, paddock_name, season,
-             protein_available, coverage_status, layers_used, out_path):
+             protein_available, coverage_status, layers_used, method, out_path):
     """Produce A4 landscape PDF zone map."""
     n_zones = len(zone_gdf)
     colours = [zone_colour(int(z), n_zones) for z in zone_gdf.sort_values("zone_id")["zone_id"]]
@@ -105,7 +113,7 @@ def make_pdf(zone_gdf, boundary_gdf, paddock_id, paddock_name, season,
     fig.text(0.5, 0.92,
              f"Generated: {date.today().isoformat()}   |   "
              f"Layers: {layers_used}   |   "
-             f"Method: K-Means k={n_zones}   |   "
+             f"Method: {method}   |   "
              f"CRS: GDA94 / MGA Zone 50",
              ha="center", va="top", fontsize=7, color="#555555")
 
@@ -161,8 +169,9 @@ def make_pdf(zone_gdf, boundary_gdf, paddock_id, paddock_name, season,
         )
         ax_leg.add_patch(patch)
 
-        # Zone heading
-        ax_leg.text(0.10, y, f"Zone {zid}  —  {row['area_ha']:.1f} ha",
+        # Zone heading (include label in brackets if present)
+        label_str = f"  [{row['zone_label']}]" if row.get("zone_label") else ""
+        ax_leg.text(0.10, y, f"Zone {zid}{label_str}  —  {row['area_ha']:.1f} ha",
                     fontsize=8.5, fontweight="bold",
                     transform=ax_leg.transAxes, va="top")
         y -= line_h * 0.65
@@ -264,6 +273,7 @@ def main():
     n_zones = len(zone_gdf)
     coverage_status = zone_gdf["cov_status"].iloc[0]
     layers_used = zone_gdf["layers"].iloc[0]
+    method = zone_gdf["method"].iloc[0] if "method" in zone_gdf.columns else "kmeans"
     protein_available = "protein" in layers_used
 
     logger.info(
@@ -297,6 +307,7 @@ def main():
         protein_available=protein_available,
         coverage_status=coverage_status,
         layers_used=layers_used,
+        method=method,
         out_path=out_pdf,
     )
     logger.info(f"Written: {out_pdf}")

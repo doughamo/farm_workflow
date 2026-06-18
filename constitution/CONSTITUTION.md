@@ -1,8 +1,11 @@
-# Farm Data Workflow — Project Constitution v0.9
+# Farm Data Workflow — Project Constitution v0.11
 # Status: Active development — Stages 0-6 implemented and audited
-# (see CALCULATIONS_AUDIT.md); Stage 7 stub only; Phase 2 vision,
-# zone map decision logic, OFE strip alignment, cropping recipes,
-# crop plan integration, and FMS actuals architecture captured
+# (see CALCULATIONS_AUDIT.md); Stage 7 stub only; crop input zone map
+# framework generalised beyond nutrients; nitrogen zone method, multi-
+# season pooling eligibility gate, and reference strip architecture
+# defined; yield axis split rule resolved (Open Item 6 closed); Phase 2
+# vision, OFE strip alignment, cropping recipes, crop plan integration,
+# and FMS actuals architecture captured
 # Last updated: 2026-06
 
 ---
@@ -153,6 +156,27 @@ Stage 8   ofe_prep         [Path B interop] Write cleaned yield shapefile
                            outputs are present in data/interop/r_output/
                            before downstream reporting depends on them.
 
+Note on Stage 4/5 branching (nitrogen): Stage 4/5 are not a single
+universal procedure for nitrogen. Before any prior season's yield or
+protein layer is pooled into Stage 4, each candidate season must clear
+the multi-season pooling eligibility gate (Section 13). Method
+selection within Stage 5 then follows Section 18B's confidence level:
+Level 1 uses single-season yield clustering; Level 2 uses the Protein
+Yield Correlation Matrix; Level 3 generates both methods in Section
+18C and routes the choice to the agronomist or farmer via the
+recommendation object (Section 18D).
+
+Note on Stage 7 (reference strips): Stage 7's join-rates-to-shapefile
+step defaults to injecting a reference strip geometry into every
+nitrogen VR prescription, carrying a uniform or zero rate against the
+zone's prescribed rate, regardless of confidence level. This is
+distinct from an OFE trial strip (Stage 9-11), which is the fuller
+experimental design gated by confidence level per Section 18B. The
+reference strip's purpose is keeping the following season eligible
+for multi-season pooling (Section 13). It can be disabled per
+prescription; that decision is recorded in the recommendation object
+alongside the agronomist's approval.
+
 --- v1.1 (OFE analysis — pending port from R) ---
 
 Stage 9   ofe_analysis     Assign yield observations to treatment zones;
@@ -284,8 +308,56 @@ Version control: Git + GitHub
 
 ## 13. Multi-Year Handling (Deferred)
 
+Implementation remains single-year only for v1; the design below is
+recorded now so it is not redesigned later, but Stages 0-7 continue
+to process one season at a time until v1.1.
+
 Per-year z-score normalisation before cross-year aggregation.
-Single year only for v1.
+
+Multi-season pooling eligibility gate: before any season's yield or
+protein layer is pooled into a multi-season average, composite, or
+stability check for a given paddock, each candidate season must pass
+two checks:
+
+  Crop classification match — the season's crop must be in the same
+  classification as the other seasons being pooled. Cereals (wheat,
+  barley, oats) pool together. Canola pools only with canola. Legumes
+  pool only with legumes. A season that fails this check is excluded
+  from this particular pool, not from the paddock's history generally.
+
+  VRA history check — the season passes if nitrogen was applied
+  uniformly across the paddock, or if a reference strip is present
+  recovering the counterfactual rate. A season with differential VRA
+  and no reference strip is excluded from passive pooling and instead
+  routes to the OFE/strip-response pathway (Stage 9-10), where the
+  response itself is analysed rather than the raw yield level.
+
+Rationale: yield response to an input rate cannot be reliably
+estimated from yield data collected without deliberate rate
+variation — once a zone has received a different rate than its
+neighbours, observed yield afterward mixes inherent potential with
+treatment effect, and the two cannot be separated from the yield map
+alone. See: Bullock, D.S. and Bullock, D.G. (1994), the foundational
+citation for this principle in the on-farm precision experimentation
+literature; Bullock, D.S., Boerngen, M., Tao, H., Maxwell, B., Luck,
+J.D., Shiratsuchi, L., Puntel, L. and Martin, N.F. (2019) The
+Data-Intensive Farm Management Project: Changing Agronomic Research
+Through On-Farm Precision Experimentation. Agronomy Journal 111(6),
+2736-2746; Rodriguez, D.G.P., Bullock, D.S. and Boerngen, M.A. (2019)
+The Origins, Implications, and Consequences of Yield-Based Nitrogen
+Fertilizer Management. Agronomy Journal 111(2), 725-735. Australian
+precedent for the same principle, implemented via embedded strips:
+Whelan, B.M., Taylor, J.A. and McBratney, A.B. (2012) A 'small strip'
+approach to empirically determining management class yield response
+functions and calculating the potential financial 'net wastage'
+associated with whole-field uniform-rate fertiliser application.
+Precision Agriculture.
+
+This gate is what makes the embedded reference strip (Section 9,
+Stage 7) load-bearing rather than optional: without it, a paddock
+under ongoing VRA accumulates seasons that cannot be pooled, and
+confidence level progression (Section 18B) stalls even as more
+seasons pass.
 
 ---
 
@@ -354,6 +426,31 @@ parallel via Path B interop during v1.
 | v0.9    | New open item logged: pyprecag local patches not under version       |
 |         | control (R-05) — resolution path (fork-and-pin / extract-to-utils /  |
 |         | commit-patch-file) undecided (Section 11)                            |
+| v0.10   | Section 18 and 18C renamed from nutrient-specific to input-         |
+|         | specific framing (lime and gypsum already didn't fit "nutrient")    |
+| v0.10   | Nitrogen zone method: Protein Yield Correlation Matrix (2x2,         |
+|         | critical protein threshold configurable, default 10.5%) and         |
+|         | multi-season normalised-protein clustering both retained as         |
+|         | valid; choice recorded in recommendation object (Section 18C)       |
+| v0.10   | Seed, fungicide, wetting agent, PGR input hierarchies explicitly     |
+|         | out of v1 scope, deferred to Phase 2 (Section 18C, 19B)              |
+| v0.10   | Multi-season pooling eligibility gate adopted: crop classification   |
+|         | match and VRA history check required before pooling any season      |
+|         | into multi-season zone methods (Section 13)                         |
+| v0.10   | Reference strip (minimal check/control strip) distinguished from    |
+|         | OFE trial strip; embedded by default in nitrogen VR prescriptions    |
+|         | from Level 1 regardless of confidence level (Section 9, 18B)        |
+| v0.10   | Zone boundary review trigger candidates extended to include         |
+|         | post-application yield/protein response divergence (Section 18E,    |
+|         | Open Item 5)                                                          |
+| v0.10   | New open item logged: yield axis split rule for Protein Yield        |
+|         | Correlation Matrix not yet defined (Section 18E, Open Item 6)       |
+| v0.11   | Open Item 6 resolved: yield axis split rule for Protein Yield        |
+|         | Correlation Matrix offers two selectable methods — median split      |
+|         | or yield relative to water-limited potential yield (French and       |
+|         | Schultz) — chosen by agronomist or farmer (Section 18C)               |
+| v0.11   | Soil-type variation in water-use efficiency for potential yield       |
+|         | estimation explicitly deferred (Section 18C)                          |
 
 ---
 
@@ -585,7 +682,7 @@ platform development.
 
 ---
 
-## 18. Zone Map Decision Logic
+## 18. Crop Input Zone Map Decision Logic
 
 ### 18A — Architectural Pattern: Readiness Gate Model
 
@@ -646,15 +743,20 @@ Farmer input: Required and recorded as a named provenance input before
               any prescription is generated. Farmer must confirm the
               zone pattern is consistent with their paddock knowledge.
 OFE strips:   Not eligible — insufficient baseline to interpret
-              treatment response.
+              treatment response. This refers to the full OFE trial
+              strip design; a reference strip (Section 9, Stage 7) is
+              embedded by default regardless of level — see Section 13.
 
 **Level 2 — Developing**
 Data state:   Two or more seasons of yield; or one season of yield
               plus one season of protein; or multi-year imagery trend
               analysis confirming consistent spatial patterns.
-Zone method:  Averaged and normalised yield layers, or yield-protein
-              composite clustering. Zone boundary consistency assessed
-              across available seasons.
+Zone method:  For nitrogen, the Protein Yield Correlation Matrix
+              (Section 18C) using whichever seasons in this level's
+              data state clear the multi-season pooling eligibility
+              gate (Section 13). For other inputs, averaged and
+              normalised yield layers. Zone boundary consistency
+              assessed across available seasons.
 Farmer input: Recommended. Platform flags any zone boundary that
               shifted substantially between seasons and invites farmer
               comment before finalising recommendation.
@@ -668,10 +770,14 @@ Data state:   Three or more seasons of yield and protein. Consistent
               zone behaviour visible across seasons. At least one season
               of embedded OFE trial strip data processed through the
               pipeline.
-Zone method:  Multi-season averaged and normalised protein maps as
-              primary nitrogen zone input. Soil survey incorporated as
-              enhancing layer if available. Zone boundaries treated as
-              stable unless flagged for review.
+Zone method:  For nitrogen, both methods in Section 18C are generated
+              over the eligible season set (Section 13), and the
+              agronomist or farmer selects between them — recorded in
+              the recommendation object (Section 18D), not decided in
+              code. For other inputs, multi-season averaged and
+              normalised maps remain the method. Soil survey
+              incorporated as enhancing layer if available. Zone
+              boundaries treated as stable unless flagged for review.
 Farmer input: Advisory. Farmer review offered; platform recommendation
               is data-driven and defensible without farmer override.
 OFE strips:   Standard practice. Embedded as routine; reviewed at
@@ -701,11 +807,14 @@ sophistication against specialist tools.
 
 ---
 
-### 18C — Nutrient-Specific Zone Map Input Hierarchy
+### 18C — Input-Specific Zone Map Input Hierarchy
 
-Zone map input selection is nutrient-specific. The same paddock will
-use different primary input layers depending on which nutrient is
-being prescribed. This is scientifically correct, not a simplification.
+Zone map input selection is specific to the crop input being
+prescribed — this covers nutrients (nitrogen, potassium, phosphorus,
+trace elements) and soil amendments (lime, gypsum) alike, and is not
+limited to nutrition. The same paddock will use different primary
+input layers depending on which input is being prescribed. This is
+scientifically correct, not a simplification.
 
 Nitrogen:
   Primary input:   Averaged and normalised protein maps from prior
@@ -714,6 +823,75 @@ Nitrogen:
   Enhancing layer: Soil survey (where available)
   Fallback:        Single-season yield (Level 1) or multi-year
                    imagery trend (Level 2 where protein absent)
+  Zone method:     Two valid methods, both retained — the choice
+                   between them is made by the agronomist or farmer,
+                   not decided in code (see Section 18D):
+                     (1) Protein Yield Correlation Matrix — a 2x2
+                         quadrant crossing yield against protein
+                         (above/below a critical threshold). Critical
+                         protein threshold is a configurable variable
+                         in paddock_config.yaml, default 10.5%. Yield
+                         axis offers two selectable methods, chosen by
+                         the agronomist or farmer and recorded in the
+                         recommendation object (Section 18D), not
+                         decided in code:
+                           (a) Median (50th percentile) split within
+                               the paddock for the season in question.
+                               Simple, no external data dependency.
+                           (b) Yield relative to water-limited
+                               potential yield for that season,
+                               calculated paddock-wide from growing
+                               season rainfall (SILO data), per the
+                               French and Schultz model. Threshold set
+                               at 0.8 x potential yield, consistent
+                               with GRDC's economic yield convention
+                               for nitrogen budgeting. Soil-type
+                               variation in water-use efficiency (per
+                               Harries et al. 2022) is deferred — this
+                               method uses a single paddock-wide
+                               potential yield value for now. Origin:
+                               French, R. and Schultz, J. (1984) Water
+                               use efficiency of wheat in a
+                               Mediterranean-type environment. I. The
+                               relation between yield, water use and
+                               climate. Australian Journal of
+                               Agricultural Research 35, 743-764;
+                               Harries, M., Flower, K.C., Renton, M.
+                               and Anderson, G.C. (2022) Water use
+                               efficiency in Western Australian
+                               cropping systems. Crop and Pasture
+                               Science.
+                         Method origin: Engel, R.E., Long, D.S.,
+                         Carlson, G.R. and Meier, C. (1999) Method for
+                         Precision Nitrogen Management in Spring
+                         Wheat: I. Fundamental Relationships.
+                         Precision Agriculture 1, 327-338; Long, D.S.,
+                         Engel, R.E. and Carlson, G.R. (2000) Method
+                         for Precision Nitrogen Management in Spring
+                         Wheat: II. Implementation. Precision
+                         Agriculture 2, 25-38. Australian validation
+                         context: Holford, I.C.R., Doyle, A.D. and
+                         Leckie, C.C. (1992) Nitrogen response
+                         characteristics of wheat protein in relation
+                         to yield responses and their interactions
+                         with phosphorus. Australian Journal of
+                         Agricultural Research 43(5), 969-986;
+                         Moffitt, E.M. (2021) Utilising new
+                         technologies to better manage within-paddock
+                         nitrogen variability and sustainably close
+                         the yield gap in southern NSW. FarmLink 2020
+                         Research Report (GRDC-funded).
+                     (2) Multi-season averaged and normalised protein
+                         maps with K-Means clustering (k=3) — the
+                         existing approach, unchanged.
+                     Both methods are generated where Section 18B's
+                     data state permits, run only over the multi-
+                     season pooling eligible set (Section 13).
+  Boundary review: Once nitrogen has been applied per zone, analysis
+                   of the following season's yield and protein
+                   response is a candidate trigger for investigating
+                   whether the zone boundaries themselves need to
+                   change. See Section 18E, Open Item 5.
 
 Potassium:
   Primary input:   Soil survey zones delineated by soil type
@@ -729,10 +907,17 @@ Phosphorus:
   Primary input:   Soil survey zones (baseline fertility)
   Enhancing layer: Multi-season yield response
 
-Implication for platform architecture: nutrient type is a primary
-field in the zone map provenance record. The question "which zone
-map should be used" is only answerable once the nutrient is specified.
-Multi-nutrient prescriptions on the same paddock may use different
+Seed, Fungicide, Wetting Agent, Plant Growth Regulator:
+  Not addressed in v1. These are crop inputs in the same sense as the
+  nutrients and soil amendments above — rate-based, VR-capable, and
+  intended to flow through the same Stage 7 prescription pipeline —
+  but no input hierarchy has been defined for any of them. Explicitly
+  out of v1 scope; deferred to Phase 2 (see Section 19B, 19E).
+
+Implication for platform architecture: input type is a primary field
+in the zone map provenance record. The question "which zone map
+should be used" is only answerable once the input is specified.
+Multiple crop inputs prescribed on the same paddock may use different
 zone maps — each is generated and recorded independently.
 
 ---
@@ -806,8 +991,10 @@ Blocks: multi-nutrient prescription module design.
 What triggers a zone boundary review in a high-confidence paddock?
 Candidates include: an anomalous season result, a change in soil
 management practice, a new soil survey, a prescribed number of seasons
-elapsed, or agronomist discretion. Who initiates the review — the
-platform, the agronomist, or the farmer?
+elapsed, agronomist discretion, or analysis of the following season's
+yield and protein response diverging from what the zone map predicted
+(Section 18C). Who initiates the review — the platform, the
+agronomist, or the farmer?
 Blocks: zone map versioning and review workflow design.
 
 ---
@@ -918,6 +1105,14 @@ Architectural implication — physical intervention prescriptions:
   zones) require a distinct spatial layer — typically soil penetrometer data
   or known compaction maps — that is neither a yield layer nor a nutrient
   fertility layer. v1 scope boundary decision required: see Open Item 1 below.
+
+Architectural implication — additional crop input types:
+  Seed rate, fungicide, soil wetting agent, and plant growth regulator
+  rates are crop inputs in the same sense as nutrients and soil
+  amendments (Section 18C) — rate-based and VR-capable, intended to
+  flow through the same Stage 7 prescription pipeline — but no input
+  hierarchy has been defined for any of them. Decision: explicitly out
+  of v1 scope, deferred to Phase 2.
 
 ---
 
